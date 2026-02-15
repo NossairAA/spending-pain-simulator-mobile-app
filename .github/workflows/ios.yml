@@ -38,22 +38,24 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           podfile = Path('ios/Podfile')
-          text = podfile.read_text()
-          if "platform :ios" in text:
-              lines = text.splitlines()
-              for i, line in enumerate(lines):
-                  if line.strip().startswith("platform :ios"):
-                      lines[i] = "platform :ios, '14.0'"
-                      break
-              podfile.write_text("\n".join(lines) + "\n")
-          else:
-              podfile.write_text("platform :ios, '14.0'\n\n" + text)
+          lines = podfile.read_text().splitlines()
+          found = False
+          for i, line in enumerate(lines):
+              if re.match(r"^\s*#?\s*platform\s*:ios\b", line):
+                  lines[i] = "platform :ios, '15.0'"
+                  found = True
+                  break
+          if not found:
+              lines.insert(0, "platform :ios, '15.0'")
+              lines.insert(1, "")
+          podfile.write_text("\n".join(lines) + "\n")
 
           pbxproj = Path('ios/Runner.xcodeproj/project.pbxproj')
           pbx = pbxproj.read_text()
-          pbx = pbx.replace("IPHONEOS_DEPLOYMENT_TARGET = 13.0;", "IPHONEOS_DEPLOYMENT_TARGET = 14.0;")
+          pbx = re.sub(r"IPHONEOS_DEPLOYMENT_TARGET = [0-9.]+;", "IPHONEOS_DEPLOYMENT_TARGET = 15.0;", pbx)
           pbxproj.write_text(pbx)
           PY
 
