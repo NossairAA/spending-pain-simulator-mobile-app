@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "96965570872",
+    "project_id": "mindspend-f94e7",
+    "storage_bucket": "mindspend-f94e7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:96965570872:android:587f36dcaf144fc98711cd",
+        "android_client_info": {
+          "package_name": "com.mindspend.mindspend"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "96965570872-s0elsuku1oo173gihvc4dahjumqajtd6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhDG9ALP8V5m6-OcYmzhq0OtbnndeGA3Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "96965570872-2ufvgjmatsu2i5e55g5qurtqer1va6mc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

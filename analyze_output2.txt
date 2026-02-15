@@ -1,0 +1,25 @@
+﻿Analyzing mobile-flutter...                                     
+
+  error - The getter 'identity' isn't defined for the type 'GoogleSignInAccount' - lib\api\auth_service.dart:23:33 - undefined_getter
+
+flutter : 1 issue 
+found. (ran in 3.2s)
+Au caractère Ligne:1 
+: 1
++ flutter analyze 
+2>&1 | Out-File 
+-Encoding utf8 
+-FilePath 
+analyze_outp ...
++ 
+~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: (1 issue   
+  found. (ran in     
+3.2s):String) []    
+, RemoteExceptio    n
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
