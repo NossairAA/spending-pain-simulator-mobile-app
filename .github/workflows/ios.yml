@@ -6,29 +6,38 @@ on:
 jobs:
   build:
     runs-on: macos-latest
+    timeout-minutes: 60
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "stable"
+          channel: "stable"
+          cache: true
+
+      - name: Flutter doctor
+        run: flutter doctor -v
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Install CocoaPods dependencies
+        run: cd ios && pod install --repo-update && cd ..
 
       - name: Build iOS (no codesign)
         run: flutter build ios --release --no-codesign
 
       - name: Create IPA
         run: |
-          mkdir Payload
+          mkdir -p Payload
           cp -r build/ios/iphoneos/Runner.app Payload/
-          zip -r Runner.ipa Payload
+          zip -r MindSpend.ipa Payload
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: Runner
-          path: Runner.ipa
+          name: MindSpend-iOS
+          path: MindSpend.ipa
