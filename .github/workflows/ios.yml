@@ -19,18 +19,30 @@ jobs:
           cache: true
 
       - name: Flutter doctor
+        working-directory: mobile-flutter
         run: flutter doctor -v
 
       - name: Install dependencies
+        working-directory: mobile-flutter
         run: flutter pub get
 
+      - name: Ensure iOS project files
+        working-directory: mobile-flutter
+        run: |
+          if [ ! -f ios/Podfile ]; then
+            flutter create --platforms=ios .
+          fi
+
       - name: Install CocoaPods dependencies
-        run: cd ios && pod install --repo-update && cd ..
+        working-directory: mobile-flutter/ios
+        run: pod install --repo-update
 
       - name: Build iOS (no codesign)
+        working-directory: mobile-flutter
         run: flutter build ios --release --no-codesign
 
       - name: Create IPA
+        working-directory: mobile-flutter
         run: |
           mkdir -p Payload
           cp -r build/ios/iphoneos/Runner.app Payload/
@@ -40,4 +52,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MindSpend-iOS
-          path: MindSpend.ipa
+          path: mobile-flutter/MindSpend.ipa
