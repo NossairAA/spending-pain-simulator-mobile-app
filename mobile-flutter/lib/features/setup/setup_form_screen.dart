@@ -73,11 +73,14 @@ class _SetupFormScreenState extends ConsumerState<SetupFormScreen> {
     final ext = context.colors;
 
     return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
               const SizedBox(height: 32),
 
               // Title
@@ -121,7 +124,7 @@ class _SetupFormScreenState extends ConsumerState<SetupFormScreen> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                autofocus: true,
+                autofocus: false,
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
@@ -279,7 +282,8 @@ class _SetupFormScreenState extends ConsumerState<SetupFormScreen> {
                   ),
                 ),
               ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

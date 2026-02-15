@@ -76,11 +76,14 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
         ),
         title: const Text('Financial Goals'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             // Title
             Text(
               'What are you building toward?',
@@ -163,7 +166,8 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
                 child: Text(_saving ? 'Saving...' : 'Save Goals'),
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

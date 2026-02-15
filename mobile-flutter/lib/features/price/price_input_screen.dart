@@ -55,11 +55,14 @@ class _PriceInputScreenState extends State<PriceInputScreen> {
     final price = double.tryParse(_priceController.text) ?? 0;
 
     return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
               const SizedBox(height: 24),
 
               // Title
@@ -84,7 +87,7 @@ class _PriceInputScreenState extends State<PriceInputScreen> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                autofocus: true,
+                autofocus: false,
                 onChanged: (_) => setState(() {}),
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 28,
@@ -207,7 +210,8 @@ class _PriceInputScreenState extends State<PriceInputScreen> {
                   ),
                 ),
               ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

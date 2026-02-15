@@ -103,12 +103,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           onPressed: () => context.go('/'),
         ),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               // Header
               Text(
                 _isSignIn ? 'Welcome Back' : 'Create Account',
@@ -302,7 +305,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   color: ext.mutedForeground.withValues(alpha: 0.6),
                 ),
               ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

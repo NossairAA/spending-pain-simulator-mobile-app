@@ -129,11 +129,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         title: const Text('Settings'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             // Income type toggle
             Container(
               padding: const EdgeInsets.all(4),
@@ -227,7 +230,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: const Text('Reset All Data'),
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );
