@@ -7,6 +7,8 @@ jobs:
   build:
     runs-on: macos-latest
     timeout-minutes: 60
+    env:
+      APP_DIR: mobile-app
 
     steps:
       - name: Checkout repository
@@ -19,22 +21,22 @@ jobs:
           cache: true
 
       - name: Flutter doctor
-        working-directory: mobile-flutter
+        working-directory: ${{ env.APP_DIR }}
         run: flutter doctor -v
 
       - name: Install dependencies
-        working-directory: mobile-flutter
+        working-directory: ${{ env.APP_DIR }}
         run: flutter pub get
 
       - name: Ensure iOS project files
-        working-directory: mobile-flutter
+        working-directory: ${{ env.APP_DIR }}
         run: |
           if [ ! -f ios/Podfile ]; then
             flutter create --platforms=ios .
           fi
 
       - name: Set iOS deployment target
-        working-directory: mobile-flutter
+        working-directory: ${{ env.APP_DIR }}
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -60,15 +62,15 @@ jobs:
           PY
 
       - name: Install CocoaPods dependencies
-        working-directory: mobile-flutter/ios
+        working-directory: ${{ env.APP_DIR }}/ios
         run: pod install --repo-update
 
       - name: Build iOS (no codesign)
-        working-directory: mobile-flutter
+        working-directory: ${{ env.APP_DIR }}
         run: flutter build ios --release --no-codesign
 
       - name: Create IPA
-        working-directory: mobile-flutter
+        working-directory: ${{ env.APP_DIR }}
         run: |
           mkdir -p Payload
           cp -r build/ios/iphoneos/Runner.app Payload/
@@ -78,4 +80,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MindSpend-iOS
-          path: mobile-flutter/MindSpend.ipa
+          path: ${{ env.APP_DIR }}/MindSpend.ipa
