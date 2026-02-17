@@ -20,7 +20,7 @@ These files are required locally and are git-ignored:
 - `android/app/google-services.json`
 - `ios/Runner/GoogleService-Info.plist`
 
-If you are on a new machine, configure Firebase before running:
+Before running the app, configure Firebase for your local environment:
 
 ```bash
 flutterfire configure

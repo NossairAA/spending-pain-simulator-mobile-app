@@ -43,11 +43,64 @@ Instead of showing only a number, MindSpend reframes each purchase as:
 
 ## Tech Stack
 
-- Flutter (Material 3)
-- Riverpod for state management
-- GoRouter for navigation and route guards
-- Firebase (`firebase_core`, `firebase_auth`, `cloud_firestore`, `google_sign_in`)
-- `shared_preferences` for guest/local storage
+MindSpend is built with **Flutter** using **Material 3**, with **Riverpod** for state management and **go_router** for navigation and route protection.
+On the backend side, it uses Firebase services (`firebase_core`, `firebase_auth`, `cloud_firestore`, `google_sign_in`) and falls back to `shared_preferences` for guest/local persistence.
+
+The project targets the Flutter stable channel with a Dart SDK constraint of `^3.11.0` (see `mobile-app/pubspec.yaml`).
+
+### Languages
+
+- Dart (primary application language)
+- Swift/Objective-C (iOS platform layer generated/managed by Flutter)
+- Kotlin/Java (Android platform layer generated/managed by Flutter)
+- YAML, XML, and Plist for project/platform configuration
+
+### Detailed Stack Breakdown
+
+#### Core Framework
+
+- **Flutter target:** Flutter stable channel
+- **Dart SDK constraint:** `^3.11.0` (from `mobile-app/pubspec.yaml`)
+- **UI system:** Material 3 enabled
+
+#### State and Architecture
+
+The codebase follows a feature-first structure under `mobile-app/lib/features/`, which keeps UI concerns grouped by domain.
+State is handled through Riverpod patterns (`Provider`, `Notifier`, `AsyncNotifier`), while core business logic is kept in:
+
+- `mobile-app/lib/services/` for app services and persistence interactions
+- `mobile-app/lib/utils/` for pure logic and calculations
+
+#### Navigation
+
+Navigation is powered by `go_router` with centralized, auth-aware redirect logic in `mobile-app/lib/app/router.dart`.
+Routes are guarded based on user state (unauthenticated, verification required, profile incomplete, guest, ready), ensuring users always land on the right flow.
+
+#### Backend and Data
+
+MindSpend supports both authenticated and guest experiences:
+
+- **Authenticated users:** Firebase Auth + Cloud Firestore
+- **Guest users:** local persistence via SharedPreferences
+
+At a high level, Firestore stores user profile and purchase-related history while local mode mirrors key behavior without requiring sign-in.
+
+#### Theming and UI
+
+Theming is tokenized and centralized using `mobile-app/lib/theme/colors.dart` and `mobile-app/lib/theme/app_theme.dart`.
+Typography is driven through `google_fonts`, keeping visual consistency across screens while supporting both light and dark themes.
+
+#### Tooling
+
+- **Linting:** `flutter_lints`
+- **App icon generation:** `flutter_launcher_icons`
+- **iOS build tooling:** CocoaPods/Xcode configuration for iOS builds
+
+#### Build and Release
+
+Development quality and release workflow rely on the tooling above.
+For release builds, use the commands in the [Build and Test](#build-and-test) section (`flutter build apk --release`, `flutter build ios --release`).
+The project currently uses a single environment setup, with room to introduce dev/prod separation later if needed.
 
 ## Project Structure
 
@@ -113,11 +166,11 @@ Firebase platform files are intentionally **not tracked in git** and must exist 
 
 `mobile-app/lib/firebase_options.dart` can stay in source control.
 
-### Running on Another Machine
+### First-Time Setup
 
-Yes, you must configure Firebase again (or copy the correct local config files securely).
+After cloning the repository, configure Firebase for your local environment (or provide the required config files securely).
 
-Recommended setup:
+Recommended:
 
 ```bash
 cd mobile-app
