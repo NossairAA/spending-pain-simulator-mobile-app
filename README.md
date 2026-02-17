@@ -1,103 +1,102 @@
 # MindSpend Mobile App
 
-MindSpend is a Flutter app that helps users understand the real-life cost of impulse purchases before buying.
-Instead of showing only a price tag, it converts a purchase into time, budget impact, and future tradeoffs.
+MindSpend is a Flutter app that helps users make better spending decisions by translating price into real-life impact: time, budget pressure, and tradeoffs.
 
-## Why MindSpend
+## Table of Contents
 
-MindSpend is built around one idea: spending decisions become clearer when money is translated into lived time and personal priorities.
+- [Overview](#overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [User Journey](#user-journey)
+- [Calculation Engine](#calculation-engine)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Firebase Setup](#firebase-setup)
+- [Build and Test](#build-and-test)
+- [Troubleshooting](#troubleshooting)
+- [Branding and App Icon](#branding-and-app-icon)
+- [Contributing](#contributing)
+- [License](#license)
 
-For each purchase, the app can estimate things like:
-- work time required to pay for it
-- emergency buffer impact
-- monthly expense impact
-- contextual insights to reduce emotional/impulsive spending
+## Overview
 
-## Core Features
+Instead of showing only a number, MindSpend reframes each purchase as:
 
-- Email + password authentication (Firebase Auth)
-- Google sign-in
+- Work time required to pay for it
+- Impact on emergency runway
+- Share of monthly expenses consumed
+- Contextual insight to reduce impulsive spending
+
+## Features
+
+- Firebase authentication (email/password + Google)
 - Email verification flow
-- Guest mode (no account required)
-- Onboarding/profile setup (income mode, monthly expenses, work days)
-- Purchase check flow with cool-off and result screens
-- Purchase history storage
+- Guest mode without account
+- Profile onboarding (income mode, expenses, work settings)
+- Purchase check + cool-off + results flow
+- Purchase history persistence
   - Firestore for authenticated users
-  - SharedPreferences for guest users
-- Insights screen for recent activity and spending patterns
-- Profile, settings, and goals screens
-- Adaptive Android icon + iOS icon assets with MindSpend branding
+  - SharedPreferences for guests
+- Insights, profile, settings, and goals screens
+- Adaptive Android and iOS app icons
 
 ## Tech Stack
 
 - Flutter (Material 3)
-- Riverpod (state management)
-- GoRouter (navigation and auth-aware redirects)
-- Firebase
-  - `firebase_core`
-  - `firebase_auth`
-  - `cloud_firestore`
-  - `google_sign_in`
-- Local persistence via `shared_preferences`
+- Riverpod for state management
+- GoRouter for navigation and route guards
+- Firebase (`firebase_core`, `firebase_auth`, `cloud_firestore`, `google_sign_in`)
+- `shared_preferences` for guest/local storage
 
 ## Project Structure
-
-Repository root contains the Flutter app under `mobile-app/`.
 
 ```text
 spending-pain-simulator-mobile-app/
   mobile-app/
     lib/
-      app/               # router + app wiring
-      features/          # UI screens and feature modules
-      models/            # typed domain models
-      providers/         # Riverpod providers/notifiers
-      services/          # auth + purchase persistence
-      theme/             # color system + typography
-      utils/             # spending calculation logic
+      app/         # App wiring and router
+      features/    # UI screens by feature
+      models/      # Domain models
+      providers/   # Riverpod providers/notifiers
+      services/    # Auth + purchase persistence
+      theme/       # Color system + typography
+      utils/       # Spending calculations
     android/
     ios/
     test/
 ```
 
-## Main User Flow
+## User Journey
 
-1. Welcome screen
-2. Auth (or continue as guest)
-3. Email verification (if needed)
-4. Profile setup (if profile missing)
-5. Home shell with tabs:
-   - Insights
-   - Check (purchase input)
-   - Profile
-6. Cool-off screen
-7. Results and decision logging
+1. Welcome
+2. Sign in or continue as guest
+3. Verify email (if required)
+4. Complete profile setup (if missing)
+5. Use Home tabs: Insights / Check / Profile
+6. Run cool-off flow and view result
+7. Save decision in purchase history
 
-Routing and guard logic lives in `mobile-app/lib/app/router.dart`.
+Routing and auth guards are implemented in `mobile-app/lib/app/router.dart`.
 
-## Calculation Model
+## Calculation Engine
 
-Spending conversion utilities are implemented in `mobile-app/lib/utils/calculations.dart`.
+Core formulas are in `mobile-app/lib/utils/calculations.dart`.
 
-Examples:
 - `timeInMinutes = (price / hourlyWage) * 60`
 - `emergencyBufferDays = price / (monthlyExpenses / 30)`
 - `monthsOfExpenses = price / monthlyExpenses`
-- Additional utility formatting for human-readable time and recency
+
+The module also handles formatting (`xh ym`, workday/year context, and time-ago labels).
 
 ## Prerequisites
 
-Before running locally, install:
-
 - Flutter SDK (stable)
-- Dart SDK (comes with Flutter)
-- Android Studio + Android SDK (for Android)
-- Xcode + CocoaPods (for iOS/macOS)
-- Firebase project (Auth + Firestore enabled)
+- Android Studio + Android SDK (Android builds)
+- Xcode + CocoaPods (iOS builds on macOS)
+- A Firebase project with Auth and Firestore enabled
 
-## Local Setup
-
-From repo root:
+## Quick Start
 
 ```bash
 cd mobile-app
@@ -105,41 +104,45 @@ flutter pub get
 flutter run
 ```
 
-## Firebase Setup Notes
+## Firebase Setup
 
-Firebase platform config files are intentionally git-ignored and must be provided locally:
+Firebase platform files are intentionally **not tracked in git** and must exist locally:
+
 - `mobile-app/android/app/google-services.json`
 - `mobile-app/ios/Runner/GoogleService-Info.plist`
 
-`mobile-app/lib/firebase_options.dart` is generated by FlutterFire and can stay in source control.
+`mobile-app/lib/firebase_options.dart` can stay in source control.
 
-If you need to connect to a different Firebase project, run FlutterFire config and place the generated platform files in the paths above.
+### Running on Another Machine
 
-## Build Commands
+Yes, you must configure Firebase again (or copy the correct local config files securely).
 
-Inside `mobile-app/`:
+Recommended setup:
 
 ```bash
-# Analyze
+cd mobile-app
+flutterfire configure
+```
+
+Then verify generated files are present in the paths above.
+
+## Build and Test
+
+Run inside `mobile-app/`:
+
+```bash
 flutter analyze
-
-# Run tests
 flutter test
-
-# Android release APK
 flutter build apk --release
-
-# iOS release (macOS only)
 flutter build ios --release
 ```
 
-## iOS / CocoaPods Warning (Common)
+## Troubleshooting
 
-If you see a warning like:
+### CocoaPods Base Configuration Warning
 
-> CocoaPods did not set the base configuration ... include Pods-Runner.profile.xcconfig in Release.xcconfig
+If you see CocoaPods warnings about base configuration, ensure these files include Pods configs:
 
-make sure these includes exist:
 - `mobile-app/ios/Flutter/Debug.xcconfig`
 - `mobile-app/ios/Flutter/Release.xcconfig`
 
@@ -152,19 +155,31 @@ flutter pub get
 flutter build ios
 ```
 
-## App Naming and Icons
+### Android Icon Not Updating
 
-- Android display label is set in `mobile-app/android/app/src/main/AndroidManifest.xml`
-- iOS display name is set in `mobile-app/ios/Runner/Info.plist`
-- Launcher icons are generated via `flutter_launcher_icons` config in `mobile-app/pubspec.yaml`
+Launcher icons can be cached by the device launcher.
+
+```bash
+flutter clean
+flutter pub get
+flutter run
+```
+
+If needed, uninstall/reinstall the app.
+
+## Branding and App Icon
+
+- Android app label: `mobile-app/android/app/src/main/AndroidManifest.xml`
+- iOS app display name: `mobile-app/ios/Runner/Info.plist`
+- Icon generation config: `mobile-app/pubspec.yaml` (`flutter_launcher_icons`)
 
 ## Contributing
 
 1. Create a branch from `main`
-2. Make your changes
+2. Implement your changes
 3. Run `flutter analyze` and `flutter test`
-4. Open a PR with a clear description of behavior changes
+4. Open a PR with clear context and screenshots if UI changed
 
 ## License
 
-No license file is currently defined in this repository.
+No license file is currently defined.
