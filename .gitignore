@@ -47,3 +47,7 @@ app.*.map.json
 # Temp analysis/build output
 analyze_*.txt
 build_output.txt
+
+# Firebase client config (keep local, do not commit)
+mobile-app/android/app/google-services.json
+mobile-app/ios/Runner/GoogleService-Info.plist
