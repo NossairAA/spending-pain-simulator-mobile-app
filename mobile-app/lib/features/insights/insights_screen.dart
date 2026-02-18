@@ -37,7 +37,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
       final user = authState.when(
         data: (u) => u,
         loading: () => null,
-        error: (_, __) => null,
+        error: (_, _) => null,
       );
 
       if (user != null) {
@@ -110,6 +110,10 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
     final totalSaved = _history
         .where((p) => p.decision == 'skipped')
         .fold<double>(0, (sum, p) => sum + p.price);
+    final totalLifeSavedMinutes = _history
+        .where((p) => p.decision == 'skipped')
+        .fold<double>(0, (sum, p) => sum + p.calculations.timeInMinutes);
+    final totalLifeSaved = SpendingCalculations.formatTime(totalLifeSavedMinutes);
 
     return Scaffold(
       appBar: AppBar(
@@ -150,7 +154,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                   const SizedBox(height: 12),
 
                   // Saved amount
-                  if (totalSaved > 0)
+                  if (totalSaved > 0 || totalLifeSavedMinutes > 0)
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
@@ -170,28 +174,71 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                       ),
                       child: Row(
                         children: [
-                          Icon(
-                            LucideIcons.piggyBank,
-                            color: theme.colorScheme.primary,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Money Saved',
-                                style: theme.textTheme.labelMedium,
-                              ),
-                              Text(
-                                '€${totalSaved.toStringAsFixed(2)}',
-                                style: GoogleFonts.spaceGrotesk(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w700,
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Icon(
+                                  LucideIcons.piggyBank,
                                   color: theme.colorScheme.primary,
+                                  size: 24,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Money Saved',
+                                      style: theme.textTheme.labelMedium,
+                                    ),
+                                    Text(
+                                      '€${totalSaved.toStringAsFixed(2)}',
+                                      style: GoogleFonts.spaceGrotesk(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w700,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            width: 1,
+                            height: 40,
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: 0.15,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Icon(
+                                  LucideIcons.clock3,
+                                  color: theme.colorScheme.primary,
+                                  size: 24,
+                                ),
+                                const SizedBox(width: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Life Saved',
+                                      style: theme.textTheme.labelMedium,
+                                    ),
+                                    Text(
+                                      totalLifeSaved,
+                                      style: GoogleFonts.spaceGrotesk(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w700,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -354,86 +401,119 @@ class _PurchaseCard extends StatelessWidget {
               ),
             ],
           ),
-          if (purchase.decision == 'undecided') ...[
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Text(
-                  "Did you buy it? ",
-                  style: TextStyle(fontSize: 12, color: ext.mutedForeground),
-                ),
-                const Spacer(),
-                _DecisionBtn(
-                  label: 'Skipped',
-                  color: theme.colorScheme.primary,
-                  onTap: () => onDecision(purchase.id!, 'skipped'),
-                ),
-                const SizedBox(width: 8),
-                _DecisionBtn(
-                  label: 'Bought',
-                  color: ext.accent,
-                  onTap: () => onDecision(purchase.id!, 'bought'),
-                ),
-              ],
-            ),
-          ] else ...[
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: purchase.decision == 'skipped'
-                    ? theme.colorScheme.primary.withValues(alpha: 0.1)
-                    : ext.accent.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                purchase.decision == 'skipped' ? '✓ Skipped' : '✗ Bought',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: purchase.decision == 'skipped'
-                      ? theme.colorScheme.primary
-                      : ext.accent,
-                ),
-              ),
-            ),
-          ],
+          const SizedBox(height: 10),
+          Text(
+            purchase.decision == 'undecided'
+                ? 'What did you do?'
+                : 'Update decision',
+            style: TextStyle(fontSize: 12, color: ext.mutedForeground),
+          ),
+          const SizedBox(height: 8),
+          _DecisionToggle(
+            decision: purchase.decision,
+            skipColor: theme.colorScheme.primary,
+            buyColor: ext.accent,
+            onSkip: () {
+              if (purchase.id != null && purchase.decision != 'skipped') {
+                onDecision(purchase.id!, 'skipped');
+              }
+            },
+            onBuy: () {
+              if (purchase.id != null && purchase.decision != 'bought') {
+                onDecision(purchase.id!, 'bought');
+              }
+            },
+          ),
         ],
       ),
     );
   }
 }
 
-class _DecisionBtn extends StatelessWidget {
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
+class _DecisionToggle extends StatelessWidget {
+  final String decision;
+  final Color skipColor;
+  final Color buyColor;
+  final VoidCallback onSkip;
+  final VoidCallback onBuy;
 
-  const _DecisionBtn({
-    required this.label,
-    required this.color,
-    required this.onTap,
+  const _DecisionToggle({
+    required this.decision,
+    required this.skipColor,
+    required this.buyColor,
+    required this.onSkip,
+    required this.onBuy,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: color,
+    final ext = context.colors;
+
+    Widget option({
+      required String label,
+      required bool selected,
+      required Color color,
+      required VoidCallback onTap,
+    }) {
+      return Expanded(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            padding: const EdgeInsets.symmetric(vertical: 9),
+            decoration: BoxDecoration(
+              color: selected
+                  ? color.withValues(alpha: 0.14)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (selected) ...[
+                  Icon(LucideIcons.check, size: 13, color: color),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: selected ? color : ext.mutedForeground,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: ext.card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: ext.border),
+      ),
+      child: Row(
+        children: [
+          option(
+            label: 'Skipped',
+            selected: decision == 'skipped',
+            color: skipColor,
+            onTap: onSkip,
+          ),
+          const SizedBox(width: 4),
+          option(
+            label: 'Bought',
+            selected: decision == 'bought',
+            color: buyColor,
+            onTap: onBuy,
+          ),
+        ],
       ),
     );
   }

@@ -226,13 +226,6 @@ If needed, uninstall/reinstall the app.
 - iOS app display name: `mobile-app/ios/Runner/Info.plist`
 - Icon generation config: `mobile-app/pubspec.yaml` (`flutter_launcher_icons`)
 
-## Contributing
-
-1. Create a branch from `main`
-2. Implement your changes
-3. Run `flutter analyze` and `flutter test`
-4. Open a PR with clear context and screenshots if UI changed
-
 ## License
 
 No license file is currently defined.

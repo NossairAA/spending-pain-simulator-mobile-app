@@ -34,6 +34,8 @@ final profileProvider = AsyncNotifierProvider<ProfileNotifier, UserProfile?>(
 class ProfileNotifier extends AsyncNotifier<UserProfile?> {
   @override
   Future<UserProfile?> build() async {
+    ref.watch(authStateProvider);
+    ref.watch(isGuestProvider);
     return _loadProfile();
   }
 
@@ -42,7 +44,7 @@ class ProfileNotifier extends AsyncNotifier<UserProfile?> {
     final isGuest = ref.read(isGuestProvider);
     final service = ref.read(authServiceProvider);
 
-    final user = authState.value;
+    final user = authState.value ?? service.currentUser;
     if (user != null) {
       return await service.loadProfile(user.uid);
     } else if (isGuest) {
@@ -61,7 +63,7 @@ class ProfileNotifier extends AsyncNotifier<UserProfile?> {
     final isGuest = ref.read(isGuestProvider);
     final service = ref.read(authServiceProvider);
 
-    final user = authState.value;
+    final user = authState.value ?? service.currentUser;
     if (user != null) {
       await service.saveProfile(user.uid, profile);
     } else if (isGuest) {
@@ -111,14 +113,14 @@ final appAuthStateProvider = Provider<AppAuthState>((ref) {
         return AppAuthState.needsVerification;
       }
 
-      return profileState.when(
-        loading: () => AppAuthState.loading,
-        error: (_, _) => AppAuthState.needsProfile,
-        data: (profile) {
-          if (profile == null) return AppAuthState.needsProfile;
-          return AppAuthState.ready;
-        },
-      );
+      final profile = profileState.value;
+      if (profile != null) return AppAuthState.ready;
+
+      if (profileState.isLoading || profileState.hasError) {
+        return AppAuthState.loading;
+      }
+
+      return AppAuthState.needsProfile;
     },
   );
 });

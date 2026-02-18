@@ -30,9 +30,11 @@ class WelcomeScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Center(
-                  child: Text(
-                    '💭',
-                    style: GoogleFonts.spaceGrotesk(fontSize: 36),
+                  child: Image.asset(
+                    'assets/icon/mindspend.png',
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.contain,
                   ),
                 ),
               ),

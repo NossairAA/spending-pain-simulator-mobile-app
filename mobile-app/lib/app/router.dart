@@ -55,20 +55,33 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/setup',
         builder: (context, state) => const SetupFormScreen(),
       ),
-      ShellRoute(
-        builder: (context, state, child) => HomeShell(child: child),
-        routes: [
-          GoRoute(
-            path: '/home/check',
-            builder: (context, state) => const PriceInputScreen(),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            HomeShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/home/insights',
+                builder: (context, state) => const InsightsScreen(),
+              ),
+            ],
           ),
-          GoRoute(
-            path: '/home/insights',
-            builder: (context, state) => const InsightsScreen(),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/home/check',
+                builder: (context, state) => const PriceInputScreen(),
+              ),
+            ],
           ),
-          GoRoute(
-            path: '/home/profile',
-            builder: (context, state) => const ProfileScreen(),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/home/profile',
+                builder: (context, state) => const ProfileScreen(),
+              ),
+            ],
           ),
         ],
       ),

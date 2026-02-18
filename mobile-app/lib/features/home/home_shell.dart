@@ -5,25 +5,17 @@ import '../../theme/app_theme.dart';
 
 /// Bottom navigation shell — replaces web app's header
 class HomeShell extends StatelessWidget {
-  final Widget child;
+  final StatefulNavigationShell navigationShell;
 
-  const HomeShell({super.key, required this.child});
-
-  static int _indexFromPath(String path) {
-    if (path.startsWith('/home/insights')) return 0;
-    if (path.startsWith('/home/check')) return 1;
-    if (path.startsWith('/home/profile')) return 2;
-    return 1;
-  }
+  const HomeShell({super.key, required this.navigationShell});
 
   @override
   Widget build(BuildContext context) {
-    final location = GoRouterState.of(context).uri.path;
-    final currentIndex = _indexFromPath(location);
+    final currentIndex = navigationShell.currentIndex;
     final ext = context.colors;
 
     return Scaffold(
-      body: child,
+      body: navigationShell,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(top: BorderSide(color: ext.border, width: 0.5)),
@@ -31,14 +23,10 @@ class HomeShell extends StatelessWidget {
         child: BottomNavigationBar(
           currentIndex: currentIndex,
           onTap: (index) {
-            switch (index) {
-              case 0:
-                context.go('/home/insights');
-              case 1:
-                context.go('/home/check');
-              case 2:
-                context.go('/home/profile');
-            }
+            navigationShell.goBranch(
+              index,
+              initialLocation: index == currentIndex,
+            );
           },
           items: const [
             BottomNavigationBarItem(
