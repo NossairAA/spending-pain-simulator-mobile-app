@@ -513,6 +513,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 8),
             _ActionTile(
+              icon: LucideIcons.scanFace,
+              label: 'Security',
+              onTap: () => context.push('/security'),
+            ),
+            const SizedBox(height: 8),
+            _ActionTile(
               icon: LucideIcons.settings,
               label: 'Settings',
               onTap: () => context.push('/settings'),

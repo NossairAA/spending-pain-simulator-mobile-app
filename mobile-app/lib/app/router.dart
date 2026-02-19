@@ -12,6 +12,7 @@ import '../features/results/results_screen.dart';
 import '../features/insights/insights_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/profile/settings_screen.dart';
+import '../features/profile/security_screen.dart';
 import '../features/profile/goals_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -110,6 +111,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/security',
+        builder: (context, state) => const SecurityScreen(),
       ),
       GoRoute(path: '/goals', builder: (context, state) => const GoalsScreen()),
     ],

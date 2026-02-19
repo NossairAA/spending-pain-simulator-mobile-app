@@ -50,6 +50,8 @@ Instead of showing only a number, MindSpend reframes each purchase as:
   - Firestore for authenticated users
   - SharedPreferences for guests
 - Insights, profile, settings, and goals screens
+- Dedicated Security screen for biometric lock controls
+- Optional biometric app lock (Face ID on iOS, fingerprint on Android)
 - Adaptive Android and iOS app icons
 
 ## Detailed Functionality
@@ -69,6 +71,8 @@ Instead of showing only a number, MindSpend reframes each purchase as:
 - Expired sessions are automatically signed out during auth-state resolution.
 - Auth form includes app-level "Remember password" preference.
 - System password manager integration is enabled using Flutter autofill (`AutofillGroup`, username/email + password hints, `finishAutofillContext(shouldSave: true)`).
+- Optional biometric lock can be enabled from the dedicated Security menu and requires biometric verification at activation time.
+- When biometric lock is enabled, app launch requires successful Face ID/fingerprint authentication before entering the app.
 
 ### Onboarding and User Profile
 

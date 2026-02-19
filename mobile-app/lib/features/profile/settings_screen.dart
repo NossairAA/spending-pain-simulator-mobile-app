@@ -72,6 +72,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       monthlyExpenses: expenses.roundToDouble(),
       emergencyFundGoal: currentProfile?.emergencyFundGoal,
       freedomGoal: currentProfile?.freedomGoal,
+      avatarPreset: currentProfile?.avatarPreset,
+      avatarImageBase64: currentProfile?.avatarImageBase64,
     );
 
     await ref.read(profileProvider.notifier).saveProfile(profile);
@@ -199,9 +201,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 32),
 
-            // Save button
-            SizedBox(
-              width: double.infinity,
+             // Save button
+             SizedBox(
+               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _saving ? null : _save,
                 child: Text(_saving ? 'Saving...' : 'Save Changes'),
