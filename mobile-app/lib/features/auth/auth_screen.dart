@@ -28,6 +28,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   bool _verificationSent = false;
   bool _rememberPassword = false;
   bool _biometricSignInEnabled = false;
+  bool _biometricAutoPrompted = false;
 
   @override
   void initState() {
@@ -38,17 +39,22 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   Future<void> _loadBiometricOption() async {
     final biometricService = ref.read(biometricAuthServiceProvider);
-    final authService = ref.read(authServiceProvider);
 
     final available = await biometricService.isBiometricAvailable();
     final enabled = available ? await biometricService.isBiometricEnabled() : false;
-    final saved = await authService.loadSavedCredentials();
 
     if (!mounted) return;
     setState(() {
-      _biometricSignInEnabled =
-          enabled && saved.rememberPassword && saved.email.isNotEmpty && saved.password.isNotEmpty;
+      _biometricSignInEnabled = enabled && available;
     });
+
+    if (_biometricSignInEnabled && !_biometricAutoPrompted && _isSignIn) {
+      _biometricAutoPrompted = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _loading || !_isSignIn) return;
+        _handleBiometricSignIn();
+      });
+    }
   }
 
   Future<void> _loadSavedCredentials() async {
@@ -105,11 +111,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         return;
       }
 
-      final restored = await authService.signInWithSavedCredentials();
+      final restored = await authService.signInWithBiometricCredentials();
       if (!restored) {
         setState(() {
           _error =
-              'Biometric sign-in is enabled, but saved credentials were not found. Please sign in with email/password once.';
+              'Biometric sign-in is enabled, but no biometric login credentials are linked yet. Sign in once with email/password.';
         });
         return;
       }
@@ -141,6 +147,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       final service = ref.read(authServiceProvider);
       if (_isSignIn) {
         await service.signInWithEmail(email, password);
+        await service.saveBiometricCredentials(email: email, password: password);
         TextInput.finishAutofillContext(shouldSave: true);
         await service.saveCredentialsPreference(
           email: email,
@@ -151,6 +158,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         await _loadBiometricOption();
       } else {
         await service.signUpWithEmail(email, password);
+        await service.saveBiometricCredentials(email: email, password: password);
         TextInput.finishAutofillContext(shouldSave: true);
         await service.saveCredentialsPreference(
           email: email,

@@ -72,10 +72,13 @@ Instead of showing only a number, MindSpend reframes each purchase as:
 - Auth form includes app-level "Remember password" preference, with password material stored in secure OS-backed storage.
 - System password manager integration is enabled using Flutter autofill (`AutofillGroup`, username/email + password hints, `finishAutofillContext(shouldSave: true)`).
 - Optional biometric lock can be enabled from the dedicated Security menu and requires biometric verification at activation time.
-- When biometric lock is enabled, cold app launch requires successful Face ID/fingerprint authentication and attempts account restoration if the user was signed out.
-- Biometric restoration depends on remembered email/password credentials being available.
-- If restoration fails, users can continue to manual sign-in (without bypassing authenticated app access).
-- On the auth screen, biometrics can also appear as a third sign-in option when biometric sign-in is enabled and remembered credentials are available.
+- Disabling biometric lock also requires biometric verification.
+- App cold launch does not force biometric prompts while session routing is handled normally.
+- On the auth screen, biometrics appear as a third sign-in option when biometric sign-in is enabled.
+- When biometric sign-in is enabled, the auth screen auto-prompts biometrics for session restoration (no button tap required).
+- Biometric sign-in can restore access when the session is expired or user is signed out.
+- Biometric restoration uses credentials linked for biometric sign-in.
+- If restoration fails, users continue with normal manual sign-in flow.
 
 ### Onboarding and User Profile
 

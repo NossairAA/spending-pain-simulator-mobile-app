@@ -15,6 +15,8 @@ class AuthService {
   static const _savedEmailKey = 'mindspend_saved_email';
   static const _legacySavedPasswordKey = 'mindspend_saved_password';
   static const _secureSavedPasswordKey = 'mindspend_saved_password_secure';
+  static const _biometricEmailKey = 'mindspend_biometric_email';
+  static const _biometricPasswordKey = 'mindspend_biometric_password';
   static const _sessionTtl = Duration(minutes: 30);
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
@@ -111,6 +113,22 @@ class AuthService {
     );
   }
 
+  Future<bool> hasActiveUnexpiredSession() async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+
+    final prefs = await SharedPreferences.getInstance();
+    final startedAt = prefs.getInt(_sessionStartedAtKey);
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    if (startedAt == null) {
+      await prefs.setInt(_sessionStartedAtKey, now);
+      return true;
+    }
+
+    return now - startedAt <= _sessionTtl.inMilliseconds;
+  }
+
   Future<AuthCredentialsPrefs> loadSavedCredentials() async {
     final prefs = await SharedPreferences.getInstance();
     await _migrateLegacySavedPassword(prefs);
@@ -139,6 +157,14 @@ class AuthService {
     }
   }
 
+  Future<void> saveBiometricCredentials({
+    required String email,
+    required String password,
+  }) async {
+    await _secureStorage.write(key: _biometricEmailKey, value: email);
+    await _secureStorage.write(key: _biometricPasswordKey, value: password);
+  }
+
   Future<void> _migrateLegacySavedPassword(SharedPreferences prefs) async {
     final legacyPassword = prefs.getString(_legacySavedPasswordKey);
     if (legacyPassword == null || legacyPassword.isEmpty) return;
@@ -151,19 +177,31 @@ class AuthService {
       );
     }
 
+    final biometricPassword = await _secureStorage.read(key: _biometricPasswordKey);
+    if (biometricPassword == null || biometricPassword.isEmpty) {
+      await _secureStorage.write(
+        key: _biometricPasswordKey,
+        value: legacyPassword,
+      );
+      final email = prefs.getString(_savedEmailKey) ?? '';
+      if (email.isNotEmpty) {
+        await _secureStorage.write(key: _biometricEmailKey, value: email);
+      }
+    }
+
     await prefs.remove(_legacySavedPasswordKey);
   }
 
-  Future<bool> signInWithSavedCredentials() async {
-    final saved = await loadSavedCredentials();
-    if (!saved.rememberPassword ||
-        saved.email.isEmpty ||
-        saved.password.isEmpty) {
+  Future<bool> signInWithBiometricCredentials() async {
+    final email = await _secureStorage.read(key: _biometricEmailKey) ?? '';
+    final password = await _secureStorage.read(key: _biometricPasswordKey) ?? '';
+
+    if (email.isEmpty || password.isEmpty) {
       return false;
     }
 
     try {
-      await signInWithEmail(saved.email, saved.password);
+      await signInWithEmail(email, password);
       return true;
     } on FirebaseAuthException {
       return false;

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../../providers/auth_provider.dart';
 import '../../providers/biometric_provider.dart';
 import '../../theme/app_theme.dart';
 
@@ -44,33 +43,18 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
 
     setState(() => _updating = true);
     final service = ref.read(biometricAuthServiceProvider);
-    final authService = ref.read(authServiceProvider);
 
-    if (value) {
-      final saved = await authService.loadSavedCredentials();
-      if (!saved.rememberPassword ||
-          saved.email.isEmpty ||
-          saved.password.isEmpty) {
-        if (mounted) {
-          setState(() {
-            _updating = false;
-            _message =
-                'Enable Remember password in sign-in first so biometrics can restore your account.';
-          });
-        }
-        return;
+    final verified = value
+        ? await service.authenticateToEnable()
+        : await service.authenticateToDisable();
+    if (!verified) {
+      if (mounted) {
+        setState(() {
+          _updating = false;
+          _message = 'Biometric verification failed. Try again.';
+        });
       }
-
-      final verified = await service.authenticateToEnable();
-      if (!verified) {
-        if (mounted) {
-          setState(() {
-            _updating = false;
-            _message = 'Biometric verification failed. Try again.';
-          });
-        }
-        return;
-      }
+      return;
     }
 
     await service.setBiometricEnabled(value);
@@ -103,7 +87,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Protect your account with Face ID or fingerprint. On cold launch, biometric verification can restore your signed-out session using remembered credentials.',
+              'Protect your account with Face ID or fingerprint. Biometric sign-in can restore your account from the login page when linked credentials are available.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: ext.mutedForeground,
                 height: 1.4,
@@ -180,7 +164,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
                         const SizedBox(height: 12),
                         Text(
                           _available
-                              ? 'Requires verification when enabling. Keep Remember password enabled so biometric restore can sign you in securely.'
+                              ? 'Requires verification when enabling. Use the biometric sign-in option on the login page to restore access quickly.'
                               : 'Set up Face ID/fingerprint on your device and reopen this screen.',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: ext.mutedForeground,

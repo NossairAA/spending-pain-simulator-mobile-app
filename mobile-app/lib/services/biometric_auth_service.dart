@@ -30,6 +30,12 @@ class BiometricAuthService {
     );
   }
 
+  Future<bool> authenticateToDisable() async {
+    return _authenticate(
+      reason: 'Verify to disable biometric lock',
+    );
+  }
+
   Future<bool> authenticateToUnlock() async {
     return _authenticate(
       reason: 'Unlock MindSpend with biometrics',
