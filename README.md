@@ -69,10 +69,13 @@ Instead of showing only a number, MindSpend reframes each purchase as:
 - Session lifetime is capped (currently 30 minutes) for authenticated users.
 - Session start time is recorded on successful auth and cleared on sign out.
 - Expired sessions are automatically signed out during auth-state resolution.
-- Auth form includes app-level "Remember password" preference.
+- Auth form includes app-level "Remember password" preference, with password material stored in secure OS-backed storage.
 - System password manager integration is enabled using Flutter autofill (`AutofillGroup`, username/email + password hints, `finishAutofillContext(shouldSave: true)`).
 - Optional biometric lock can be enabled from the dedicated Security menu and requires biometric verification at activation time.
-- When biometric lock is enabled, app launch requires successful Face ID/fingerprint authentication before entering the app.
+- When biometric lock is enabled, cold app launch requires successful Face ID/fingerprint authentication and attempts account restoration if the user was signed out.
+- Biometric restoration depends on remembered email/password credentials being available.
+- If restoration fails, users can continue to manual sign-in (without bypassing authenticated app access).
+- On the auth screen, biometrics can also appear as a third sign-in option when biometric sign-in is enabled and remembered credentials are available.
 
 ### Onboarding and User Profile
 
@@ -148,6 +151,7 @@ Instead of showing only a number, MindSpend reframes each purchase as:
 - Primary Flutter targets configured in the project:
   - Android
   - iOS
+  - macOS desktop
   - Windows desktop
   - Web (Edge/Chrome when available)
 

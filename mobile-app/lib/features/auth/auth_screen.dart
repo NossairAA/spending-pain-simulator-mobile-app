@@ -7,6 +7,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/biometric_provider.dart';
 import '../../services/auth_service.dart';
 
 /// Auth screen — full-screen version of web's auth-modal.tsx
@@ -26,11 +27,28 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   bool _loadingPrefs = true;
   bool _verificationSent = false;
   bool _rememberPassword = false;
+  bool _biometricSignInEnabled = false;
 
   @override
   void initState() {
     super.initState();
     _loadSavedCredentials();
+    _loadBiometricOption();
+  }
+
+  Future<void> _loadBiometricOption() async {
+    final biometricService = ref.read(biometricAuthServiceProvider);
+    final authService = ref.read(authServiceProvider);
+
+    final available = await biometricService.isBiometricAvailable();
+    final enabled = available ? await biometricService.isBiometricEnabled() : false;
+    final saved = await authService.loadSavedCredentials();
+
+    if (!mounted) return;
+    setState(() {
+      _biometricSignInEnabled =
+          enabled && saved.rememberPassword && saved.email.isNotEmpty && saved.password.isNotEmpty;
+    });
   }
 
   Future<void> _loadSavedCredentials() async {
@@ -71,6 +89,39 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
   }
 
+  Future<void> _handleBiometricSignIn() async {
+    setState(() {
+      _loading = true;
+      _error = '';
+    });
+
+    try {
+      final biometricService = ref.read(biometricAuthServiceProvider);
+      final authService = ref.read(authServiceProvider);
+
+      final verified = await biometricService.authenticateToUnlock();
+      if (!verified) {
+        setState(() => _error = 'Biometric verification failed. Try again.');
+        return;
+      }
+
+      final restored = await authService.signInWithSavedCredentials();
+      if (!restored) {
+        setState(() {
+          _error =
+              'Biometric sign-in is enabled, but saved credentials were not found. Please sign in with email/password once.';
+        });
+        return;
+      }
+
+      ref.read(profileProvider.notifier).reload();
+    } catch (_) {
+      setState(() => _error = 'Biometric sign-in failed');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   Future<void> _handleEmailAuth() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
@@ -97,6 +148,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           rememberPassword: _rememberPassword,
         );
         ref.read(profileProvider.notifier).reload();
+        await _loadBiometricOption();
       } else {
         await service.signUpWithEmail(email, password);
         TextInput.finishAutofillContext(shouldSave: true);
@@ -106,6 +158,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           rememberPassword: _rememberPassword,
         );
         setState(() => _verificationSent = true);
+        await _loadBiometricOption();
       }
     } on FirebaseAuthException catch (e) {
       setState(() => _error = AuthService.friendlyError(e));
@@ -204,6 +257,20 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     ),
                   ),
                 ),
+                if (_isSignIn && _biometricSignInEnabled) ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _loading ? null : _handleBiometricSignIn,
+                      icon: const Icon(LucideIcons.scanFace, size: 20),
+                      label: const Text('Continue with Biometrics'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 24),
 
                 // Divider
@@ -241,10 +308,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   controller: _emailController,
                   onTapOutside: (_) => FocusScope.of(context).unfocus(),
                   keyboardType: TextInputType.emailAddress,
-                  autofillHints: const [
-                    AutofillHints.username,
-                    AutofillHints.email,
-                  ],
+                  textInputAction: TextInputAction.next,
+                  autofillHints: _isSignIn
+                      ? const [AutofillHints.username, AutofillHints.email]
+                      : const [AutofillHints.newUsername, AutofillHints.email],
+                  autocorrect: false,
+                  enableSuggestions: false,
                   decoration: const InputDecoration(
                     hintText: 'you@example.com',
                   ),
@@ -268,7 +337,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   controller: _passwordController,
                   onTapOutside: (_) => FocusScope.of(context).unfocus(),
                   obscureText: true,
-                  autofillHints: const [AutofillHints.password],
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _handleEmailAuth(),
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  autofillHints: _isSignIn
+                      ? const [AutofillHints.password]
+                      : const [AutofillHints.newPassword],
                   decoration: const InputDecoration(hintText: '••••••••'),
                 ),
                 const SizedBox(height: 8),

@@ -31,8 +31,12 @@ flutterfire configure
 ```bash
 flutter analyze
 flutter test
-flutter run -d windows
+flutter run -d macos
 flutter run -d <android-device-id>
 flutter build apk --release
 flutter build ios --release
 ```
+
+## Platform Notes
+
+- Desktop versions are available for macOS and Windows.

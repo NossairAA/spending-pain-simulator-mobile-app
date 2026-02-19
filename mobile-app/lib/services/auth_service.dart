@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -12,8 +13,10 @@ class AuthService {
   static const _sessionStartedAtKey = 'mindspend_session_started_at';
   static const _rememberPasswordKey = 'mindspend_remember_password';
   static const _savedEmailKey = 'mindspend_saved_email';
-  static const _savedPasswordKey = 'mindspend_saved_password';
+  static const _legacySavedPasswordKey = 'mindspend_saved_password';
+  static const _secureSavedPasswordKey = 'mindspend_saved_password_secure';
   static const _sessionTtl = Duration(minutes: 30);
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   User? get currentUser => _auth.currentUser;
   Stream<User?> get authStateChanges =>
@@ -110,10 +113,12 @@ class AuthService {
 
   Future<AuthCredentialsPrefs> loadSavedCredentials() async {
     final prefs = await SharedPreferences.getInstance();
+    await _migrateLegacySavedPassword(prefs);
+
     return AuthCredentialsPrefs(
       rememberPassword: prefs.getBool(_rememberPasswordKey) ?? false,
       email: prefs.getString(_savedEmailKey) ?? '',
-      password: prefs.getString(_savedPasswordKey) ?? '',
+      password: await _secureStorage.read(key: _secureSavedPasswordKey) ?? '',
     );
   }
 
@@ -125,10 +130,45 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_savedEmailKey, email);
     await prefs.setBool(_rememberPasswordKey, rememberPassword);
+
     if (rememberPassword) {
-      await prefs.setString(_savedPasswordKey, password);
+      await _secureStorage.write(key: _secureSavedPasswordKey, value: password);
     } else {
-      await prefs.remove(_savedPasswordKey);
+      await _secureStorage.delete(key: _secureSavedPasswordKey);
+      await prefs.remove(_legacySavedPasswordKey);
+    }
+  }
+
+  Future<void> _migrateLegacySavedPassword(SharedPreferences prefs) async {
+    final legacyPassword = prefs.getString(_legacySavedPasswordKey);
+    if (legacyPassword == null || legacyPassword.isEmpty) return;
+
+    final securePassword = await _secureStorage.read(key: _secureSavedPasswordKey);
+    if (securePassword == null || securePassword.isEmpty) {
+      await _secureStorage.write(
+        key: _secureSavedPasswordKey,
+        value: legacyPassword,
+      );
+    }
+
+    await prefs.remove(_legacySavedPasswordKey);
+  }
+
+  Future<bool> signInWithSavedCredentials() async {
+    final saved = await loadSavedCredentials();
+    if (!saved.rememberPassword ||
+        saved.email.isEmpty ||
+        saved.password.isEmpty) {
+      return false;
+    }
+
+    try {
+      await signInWithEmail(saved.email, saved.password);
+      return true;
+    } on FirebaseAuthException {
+      return false;
+    } catch (_) {
+      return false;
     }
   }
 

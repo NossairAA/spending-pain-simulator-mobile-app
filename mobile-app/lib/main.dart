@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'app/router.dart';
+import 'providers/auth_provider.dart';
 import 'providers/biometric_provider.dart';
 import 'theme/app_theme.dart';
 
@@ -60,6 +61,7 @@ class _BiometricGate extends ConsumerStatefulWidget {
 class _BiometricGateState extends ConsumerState<_BiometricGate> {
   bool _checking = true;
   bool _unlocked = false;
+  String _error = '';
 
   @override
   void initState() {
@@ -68,6 +70,13 @@ class _BiometricGateState extends ConsumerState<_BiometricGate> {
   }
 
   Future<void> _checkLock() async {
+    if (mounted) {
+      setState(() {
+        _checking = true;
+        _error = '';
+      });
+    }
+
     final service = ref.read(biometricAuthServiceProvider);
     final enabled = await service.isBiometricEnabled();
     final available = await service.isBiometricAvailable();
@@ -86,10 +95,35 @@ class _BiometricGateState extends ConsumerState<_BiometricGate> {
     }
 
     final verified = await service.authenticateToUnlock();
+    if (!verified) {
+      if (!mounted) return;
+      setState(() {
+        _checking = false;
+        _unlocked = false;
+        _error = 'Biometric check failed. Try again.';
+      });
+      return;
+    }
+
+    final authService = ref.read(authServiceProvider);
+    if (authService.currentUser == null) {
+      final restored = await authService.signInWithSavedCredentials();
+      if (!restored) {
+        if (!mounted) return;
+        setState(() {
+          _checking = false;
+          _unlocked = false;
+          _error =
+              'No saved account was restored. Sign in once with Remember password enabled.';
+        });
+        return;
+      }
+    }
+
     if (!mounted) return;
     setState(() {
       _checking = false;
-      _unlocked = verified;
+      _unlocked = true;
     });
   }
 
@@ -133,11 +167,34 @@ class _BiometricGateState extends ConsumerState<_BiometricGate> {
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Color(0xFF9CA3B2)),
                 ),
+                if (_error.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    _error,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Color(0xFFFF8A8A), fontSize: 12),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: _checkLock,
                   child: const Text('Unlock'),
                 ),
+                if (_error.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () async {
+                      final authService = ref.read(authServiceProvider);
+                      await authService.signOut();
+                      if (!mounted) return;
+                      setState(() {
+                        _checking = false;
+                        _unlocked = true;
+                      });
+                    },
+                    child: const Text('Continue to Sign In'),
+                  ),
+                ],
               ],
             ),
           ),
