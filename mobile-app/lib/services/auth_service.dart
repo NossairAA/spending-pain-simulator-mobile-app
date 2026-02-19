@@ -9,10 +9,35 @@ import '../models/user_profile.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  static const _sessionStartedAtKey = 'mindspend_session_started_at';
+  static const _rememberPasswordKey = 'mindspend_remember_password';
+  static const _savedEmailKey = 'mindspend_saved_email';
+  static const _savedPasswordKey = 'mindspend_saved_password';
+  static const _sessionTtl = Duration(minutes: 30);
 
   User? get currentUser => _auth.currentUser;
+  Stream<User?> get authStateChanges =>
+      _auth.authStateChanges().asyncMap((user) async {
+        final prefs = await SharedPreferences.getInstance();
 
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
+        if (user == null) {
+          await prefs.remove(_sessionStartedAtKey);
+          return null;
+        }
+
+        final startedAt = prefs.getInt(_sessionStartedAtKey);
+        final now = DateTime.now().millisecondsSinceEpoch;
+        if (startedAt != null && now - startedAt > _sessionTtl.inMilliseconds) {
+          await signOut();
+          return null;
+        }
+
+        if (startedAt == null) {
+          await prefs.setInt(_sessionStartedAtKey, now);
+        }
+
+        return user;
+      });
 
   // ─── Sign In with Google ───
   Future<UserCredential> signInWithGoogle() async {
@@ -28,15 +53,19 @@ class AuthService {
       idToken: googleAuth.idToken,
     );
 
-    return await _auth.signInWithCredential(credential);
+    final userCredential = await _auth.signInWithCredential(credential);
+    await _startSession();
+    return userCredential;
   }
 
   // ─── Sign In with Email/Password ───
   Future<UserCredential> signInWithEmail(String email, String password) async {
-    return await _auth.signInWithEmailAndPassword(
+    final credential = await _auth.signInWithEmailAndPassword(
       email: email,
       password: password,
     );
+    await _startSession();
+    return credential;
   }
 
   // ─── Sign Up with Email/Password ───
@@ -48,6 +77,8 @@ class AuthService {
 
     // Send verification email
     await credential.user?.sendEmailVerification();
+
+    await _startSession();
 
     return credential;
   }
@@ -65,6 +96,40 @@ class AuthService {
       // GoogleSignIn may not be initialized
     }
     await _auth.signOut();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_sessionStartedAtKey);
+  }
+
+  Future<void> _startSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(
+      _sessionStartedAtKey,
+      DateTime.now().millisecondsSinceEpoch,
+    );
+  }
+
+  Future<AuthCredentialsPrefs> loadSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    return AuthCredentialsPrefs(
+      rememberPassword: prefs.getBool(_rememberPasswordKey) ?? false,
+      email: prefs.getString(_savedEmailKey) ?? '',
+      password: prefs.getString(_savedPasswordKey) ?? '',
+    );
+  }
+
+  Future<void> saveCredentialsPreference({
+    required String email,
+    required String password,
+    required bool rememberPassword,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_savedEmailKey, email);
+    await prefs.setBool(_rememberPasswordKey, rememberPassword);
+    if (rememberPassword) {
+      await prefs.setString(_savedPasswordKey, password);
+    } else {
+      await prefs.remove(_savedPasswordKey);
+    }
   }
 
   // ─── Delete Account ───
@@ -92,9 +157,27 @@ class AuthService {
   }
 
   Future<void> saveProfile(String uid, UserProfile profile) async {
-    await _db.collection('users').doc(uid).set({
-      'profile': profile.toMap(),
-    }, SetOptions(merge: true));
+    final doc = _db.collection('users').doc(uid);
+    final nextProfile = profile.toMap();
+
+    final snapshot = await doc.get();
+    final existingRaw = snapshot.data()?['profile'];
+    final existingProfile = existingRaw is Map
+        ? Map<String, dynamic>.from(existingRaw)
+        : <String, dynamic>{};
+
+    await doc.set({'profile': nextProfile}, SetOptions(merge: true));
+
+    final fieldsToDelete = <String, dynamic>{};
+    for (final key in existingProfile.keys) {
+      if (!nextProfile.containsKey(key)) {
+        fieldsToDelete['profile.$key'] = FieldValue.delete();
+      }
+    }
+
+    if (fieldsToDelete.isNotEmpty) {
+      await doc.update(fieldsToDelete);
+    }
   }
 
   // ─── Guest Profile (SharedPreferences) ───
@@ -143,4 +226,16 @@ class AuthService {
         return e.message ?? 'An error occurred';
     }
   }
+}
+
+class AuthCredentialsPrefs {
+  final bool rememberPassword;
+  final String email;
+  final String password;
+
+  const AuthCredentialsPrefs({
+    required this.rememberPassword,
+    required this.email,
+    required this.password,
+  });
 }

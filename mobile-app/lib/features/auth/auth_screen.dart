@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -22,7 +23,28 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _passwordController = TextEditingController();
   String _error = '';
   bool _loading = false;
+  bool _loadingPrefs = true;
   bool _verificationSent = false;
+  bool _rememberPassword = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final prefs = await ref.read(authServiceProvider).loadSavedCredentials();
+    if (!mounted) return;
+    setState(() {
+      _rememberPassword = prefs.rememberPassword;
+      _emailController.text = prefs.email;
+      if (prefs.rememberPassword) {
+        _passwordController.text = prefs.password;
+      }
+      _loadingPrefs = false;
+    });
+  }
 
   @override
   void dispose() {
@@ -68,9 +90,21 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       final service = ref.read(authServiceProvider);
       if (_isSignIn) {
         await service.signInWithEmail(email, password);
+        TextInput.finishAutofillContext(shouldSave: true);
+        await service.saveCredentialsPreference(
+          email: email,
+          password: password,
+          rememberPassword: _rememberPassword,
+        );
         ref.read(profileProvider.notifier).reload();
       } else {
         await service.signUpWithEmail(email, password);
+        TextInput.finishAutofillContext(shouldSave: true);
+        await service.saveCredentialsPreference(
+          email: email,
+          password: password,
+          rememberPassword: _rememberPassword,
+        );
         setState(() => _verificationSent = true);
       }
     } on FirebaseAuthException catch (e) {
@@ -92,6 +126,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     final theme = Theme.of(context);
     final ext = context.colors;
 
+    if (_loadingPrefs) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     if (_verificationSent) {
       return _buildVerificationSent(theme, ext);
     }
@@ -109,9 +150,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           child: SingleChildScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+            child: AutofillGroup(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 // Header
                 Text(
                   _isSignIn ? 'Welcome Back' : 'Create Account',
@@ -199,6 +241,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   controller: _emailController,
                   onTapOutside: (_) => FocusScope.of(context).unfocus(),
                   keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [
+                    AutofillHints.username,
+                    AutofillHints.email,
+                  ],
                   decoration: const InputDecoration(
                     hintText: 'you@example.com',
                   ),
@@ -222,7 +268,28 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   controller: _passwordController,
                   onTapOutside: (_) => FocusScope.of(context).unfocus(),
                   obscureText: true,
+                  autofillHints: const [AutofillHints.password],
                   decoration: const InputDecoration(hintText: '••••••••'),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _rememberPassword,
+                      onChanged: _loading
+                          ? null
+                          : (value) {
+                              setState(() => _rememberPassword = value ?? false);
+                            },
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Remember password',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: ext.mutedForeground,
+                      ),
+                    ),
+                  ],
                 ),
                 if (!_isSignIn) ...[
                   const SizedBox(height: 4),
@@ -309,7 +376,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     color: ext.mutedForeground.withValues(alpha: 0.6),
                   ),
                 ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

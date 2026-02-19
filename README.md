@@ -5,7 +5,9 @@ MindSpend is a Flutter app that helps users make better spending decisions by tr
 ## Table of Contents
 
 - [Overview](#overview)
+- [Quick Links](#quick-links)
 - [Features](#features)
+- [Detailed Functionality](#detailed-functionality)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [User Journey](#user-journey)
@@ -28,6 +30,15 @@ Instead of showing only a number, MindSpend reframes each purchase as:
 - Share of monthly expenses consumed
 - Contextual insight to reduce impulsive spending
 
+## Quick Links
+
+- [Authentication and Access](#authentication-and-access)
+- [Session Management and Credential UX](#session-management-and-credential-ux)
+- [Profile Avatar Customization](#profile-avatar-customization)
+- [Purchase Check and Decision Flow](#purchase-check-and-decision-flow)
+- [Insights and History](#insights-and-history)
+- [Data Storage and Cleanup](#data-storage-and-cleanup)
+
 ## Features
 
 - Firebase authentication (email/password + Google)
@@ -40,6 +51,101 @@ Instead of showing only a number, MindSpend reframes each purchase as:
   - SharedPreferences for guests
 - Insights, profile, settings, and goals screens
 - Adaptive Android and iOS app icons
+
+## Detailed Functionality
+
+### Authentication and Access
+
+- Supports Firebase email/password sign-in, email/password sign-up, and Google sign-in.
+- Enforces email verification for non-Google accounts before full app access.
+- Supports guest mode, allowing full local usage without account creation.
+- Uses auth-aware route guards to move users to the right flow (welcome, auth, verification, setup, or home).
+- Starts returning users directly in the Check flow (`/home/check`) while still protecting unauthenticated flows.
+
+### Session Management and Credential UX
+
+- Session lifetime is capped (currently 30 minutes) for authenticated users.
+- Session start time is recorded on successful auth and cleared on sign out.
+- Expired sessions are automatically signed out during auth-state resolution.
+- Auth form includes app-level "Remember password" preference.
+- System password manager integration is enabled using Flutter autofill (`AutofillGroup`, username/email + password hints, `finishAutofillContext(shouldSave: true)`).
+
+### Onboarding and User Profile
+
+- First-time users complete setup with personal finance context:
+  - hourly wage
+  - working days per year
+  - monthly expenses
+  - optional emergency fund goal
+  - optional freedom goal
+- Profile persists to Firestore for authenticated users and SharedPreferences for guests.
+- Profile screen shows account identity context (guest/email/google provider).
+
+### Profile Avatar Customization
+
+- Users can customize profile identity with:
+  - uploaded gallery photo
+  - built-in avatar presets
+- Avatar has an inline edit button inside the avatar circle.
+- Avatar edit menu supports:
+  - upload/reupload photo
+  - choose preset avatar
+  - delete uploaded photo
+- Deleting uploaded photo resets to default avatar state (not previous preset fallback).
+
+### Purchase Check and Decision Flow
+
+- Users input purchase label, price, and category.
+- App computes personalized cost-of-life impact and decision context.
+- Cool-off flow is integrated to reduce impulse decisions.
+- Results can be persisted into purchase history for later review.
+
+### Insights and History
+
+- Insights track per-purchase decisions (`bought`, `skipped`, `undecided`).
+- Purchase cards support decision editing with animated state transitions:
+  - initial toggle selection
+  - compact decision chip view
+  - edit back to toggle
+- Includes smooth UI transitions and haptic feedback for edit/toggle interactions.
+- Decision updates are optimistic to avoid disruptive full-screen loading flashes.
+- History cards support deletion.
+- Aggregated stats include:
+  - total checks
+  - total skipped / bought
+  - money saved from skipped
+  - life-time saved from skipped
+
+### Data Storage and Cleanup
+
+- Authenticated storage:
+  - profile under `users/{uid}`
+  - purchases under `users/{uid}/purchases`
+- Guest storage:
+  - profile and purchase history via SharedPreferences
+- Save paths include stale-key cleanup:
+  - profile saves remove old keys no longer present in current model data
+  - purchase saves/updates remove outdated fields (including nested fields)
+- Guest-mode cleanup removes local profile, purchase history, and last ethical-check state when guest data is cleared.
+
+### Navigation and App Shell
+
+- Main app shell uses 3 primary tabs: Insights, Check, Profile.
+- Routing is centralized in `mobile-app/lib/app/router.dart` with auth/profile-state redirects.
+- Includes explicit paths for cool-off, results, settings, and goals.
+
+### Launch and UX Polish
+
+- App bootstrap includes a brief branded loading screen during initialization.
+- Supports pull-to-refresh in Insights and focused interaction-level animations.
+
+### Platforms
+
+- Primary Flutter targets configured in the project:
+  - Android
+  - iOS
+  - Windows desktop
+  - Web (Edge/Chrome when available)
 
 ## Tech Stack
 

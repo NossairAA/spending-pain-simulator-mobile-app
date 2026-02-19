@@ -11,11 +11,8 @@ class PurchaseService {
   // ─── Firestore (authenticated users) ───
 
   Future<String> savePurchase(String uid, PurchaseHistory purchase) async {
-    final doc = await _db
-        .collection('users')
-        .doc(uid)
-        .collection('purchases')
-        .add(purchase.toMap());
+    final doc = _db.collection('users').doc(uid).collection('purchases').doc();
+    await _setMapWithCleanup(doc, purchase.toMap());
     return doc.id;
   }
 
@@ -38,12 +35,22 @@ class PurchaseService {
     String purchaseId,
     String decision,
   ) async {
-    await _db
+    final doc = _db
         .collection('users')
         .doc(uid)
         .collection('purchases')
-        .doc(purchaseId)
-        .update({'decision': decision});
+        .doc(purchaseId);
+
+    final snapshot = await doc.get();
+    if (!snapshot.exists) return;
+
+    final data = snapshot.data();
+    if (data == null) return;
+
+    final sanitized = PurchaseHistory.fromMap(data, id: snapshot.id).copyWith(
+      decision: decision,
+    );
+    await _setMapWithCleanup(doc, sanitized.toMap());
   }
 
   Future<void> deletePurchase(String uid, String purchaseId) async {
@@ -53,6 +60,48 @@ class PurchaseService {
         .collection('purchases')
         .doc(purchaseId)
         .delete();
+  }
+
+  Future<void> _setMapWithCleanup(
+    DocumentReference<Map<String, dynamic>> doc,
+    Map<String, dynamic> next,
+  ) async {
+    final snapshot = await doc.get();
+    final existing = snapshot.data() ?? <String, dynamic>{};
+
+    await doc.set(next, SetOptions(merge: true));
+
+    final fieldsToDelete = <String, dynamic>{};
+    _collectMissingPaths(existing, next, fieldsToDelete);
+
+    if (fieldsToDelete.isNotEmpty) {
+      await doc.update(fieldsToDelete);
+    }
+  }
+
+  void _collectMissingPaths(
+    Map<String, dynamic> existing,
+    Map<String, dynamic> next,
+    Map<String, dynamic> output, {
+    String prefix = '',
+  }) {
+    for (final entry in existing.entries) {
+      final key = entry.key;
+      final path = prefix.isEmpty ? key : '$prefix.$key';
+
+      if (!next.containsKey(key)) {
+        output[path] = FieldValue.delete();
+        continue;
+      }
+
+      final currentValue = entry.value;
+      final nextValue = next[key];
+      if (currentValue is Map && nextValue is Map) {
+        final currentMap = Map<String, dynamic>.from(currentValue);
+        final nextMap = Map<String, dynamic>.from(nextValue);
+        _collectMissingPaths(currentMap, nextMap, output, prefix: path);
+      }
+    }
   }
 
   // ─── Guest mode (SharedPreferences) ───

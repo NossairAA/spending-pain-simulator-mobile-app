@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -26,8 +27,12 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
     _loadHistory();
   }
 
-  Future<void> _loadHistory() async {
-    setState(() => _loading = true);
+  Future<void> _loadHistory({bool showLoader = true}) async {
+    if (showLoader && mounted) {
+      setState(() => _loading = true);
+    }
+
+    List<PurchaseHistory> loadedHistory = [];
     try {
       final service = PurchaseService();
       final authState = ref.read(authStateProvider);
@@ -41,21 +46,30 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
       );
 
       if (user != null) {
-        _history = await service.getPurchaseHistory(user.uid);
+        loadedHistory = await service.getPurchaseHistory(user.uid);
       } else if (isGuest) {
-        _history = await service.getGuestPurchaseHistory();
-      } else {
-        _history = [];
+        loadedHistory = await service.getGuestPurchaseHistory();
       }
     } catch (e) {
       // If Firestore fails, show empty state rather than infinite loading
       debugPrint('InsightsScreen: Error loading history: $e');
-      _history = [];
+      loadedHistory = [];
     }
-    if (mounted) setState(() => _loading = false);
+    if (!mounted) return;
+    setState(() {
+      _history = loadedHistory;
+      if (showLoader) _loading = false;
+    });
   }
 
   Future<void> _updateDecision(String id, String decision) async {
+    final previousHistory = _history;
+    setState(() {
+      _history = _history
+          .map((item) => item.id == id ? item.copyWith(decision: decision) : item)
+          .toList();
+    });
+
     try {
       final service = PurchaseService();
       final user = ref.read(authStateProvider).value;
@@ -66,9 +80,12 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
       } else if (isGuest) {
         await service.updateGuestDecision(id, decision);
       }
-      _loadHistory();
+      _loadHistory(showLoader: false);
     } catch (e) {
       debugPrint('InsightsScreen: Error updating decision: $e');
+      if (mounted) {
+        setState(() => _history = previousHistory);
+      }
     }
   }
 
@@ -337,7 +354,7 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _PurchaseCard extends StatelessWidget {
+class _PurchaseCard extends StatefulWidget {
   final PurchaseHistory purchase;
   final Function(String id, String decision) onDecision;
   final Function(String id) onDelete;
@@ -349,13 +366,64 @@ class _PurchaseCard extends StatelessWidget {
   });
 
   @override
+  State<_PurchaseCard> createState() => _PurchaseCardState();
+}
+
+class _PurchaseCardState extends State<_PurchaseCard> {
+  late bool _isEditing;
+  late String _decision;
+
+  @override
+  void initState() {
+    super.initState();
+    _decision = widget.purchase.decision;
+    _isEditing = _decision == 'undecided';
+  }
+
+  @override
+  void didUpdateWidget(covariant _PurchaseCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.purchase.id != widget.purchase.id) {
+      _decision = widget.purchase.decision;
+      _isEditing = _decision == 'undecided';
+      return;
+    }
+
+    if (oldWidget.purchase.decision != widget.purchase.decision) {
+      _decision = widget.purchase.decision;
+      if (_decision == 'undecided') {
+        _isEditing = true;
+      }
+    }
+  }
+
+  String _decisionLabel(String decision) {
+    switch (decision) {
+      case 'bought':
+        return 'Bought';
+      case 'skipped':
+        return 'Skipped';
+      default:
+        return 'No decision yet';
+    }
+  }
+
+  Color _decisionColor(ThemeData theme, AppColorScheme ext, String decision) {
+    if (decision == 'bought') return ext.accent;
+    if (decision == 'skipped') return theme.colorScheme.primary;
+    return ext.mutedForeground;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final ext = context.colors;
+    final purchase = widget.purchase;
     final timeStr = SpendingCalculations.formatTime(
       purchase.calculations.timeInMinutes,
     );
     final ago = SpendingCalculations.getTimeAgo(purchase.timestamp);
+    final decisionColor = _decisionColor(theme, ext, _decision);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -397,32 +465,95 @@ class _PurchaseCard extends StatelessWidget {
                   size: 16,
                   color: ext.mutedForeground,
                 ),
-                onPressed: () => onDelete(purchase.id!),
+                onPressed: purchase.id == null
+                    ? null
+                    : () => widget.onDelete(purchase.id!),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          Text(
-            purchase.decision == 'undecided'
-                ? 'What did you do?'
-                : 'Update decision',
-            style: TextStyle(fontSize: 12, color: ext.mutedForeground),
-          ),
-          const SizedBox(height: 8),
-          _DecisionToggle(
-            decision: purchase.decision,
-            skipColor: theme.colorScheme.primary,
-            buyColor: ext.accent,
-            onSkip: () {
-              if (purchase.id != null && purchase.decision != 'skipped') {
-                onDecision(purchase.id!, 'skipped');
-              }
-            },
-            onBuy: () {
-              if (purchase.id != null && purchase.decision != 'bought') {
-                onDecision(purchase.id!, 'bought');
-              }
-            },
+          AnimatedSize(
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 260),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) {
+                final offsetTween = Tween<Offset>(
+                  begin: const Offset(0, 0.08),
+                  end: Offset.zero,
+                );
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: offsetTween.animate(animation),
+                    child: child,
+                  ),
+                );
+              },
+              child: _isEditing
+                  ? _DecisionToggle(
+                      key: const ValueKey('toggle'),
+                      decision: _decision,
+                      skipColor: theme.colorScheme.primary,
+                      buyColor: ext.accent,
+                      onSkip: () {
+                        if (_decision == 'skipped') {
+                          setState(() => _isEditing = false);
+                          return;
+                        }
+
+                        setState(() {
+                          _decision = 'skipped';
+                          _isEditing = false;
+                        });
+                        if (purchase.id != null) {
+                          widget.onDecision(purchase.id!, 'skipped');
+                        }
+                      },
+                      onBuy: () {
+                        if (_decision == 'bought') {
+                          setState(() => _isEditing = false);
+                          return;
+                        }
+
+                        setState(() {
+                          _decision = 'bought';
+                          _isEditing = false;
+                        });
+                        if (purchase.id != null) {
+                          widget.onDecision(purchase.id!, 'bought');
+                        }
+                      },
+                    )
+                  : Row(
+                      key: const ValueKey('decision'),
+                      children: [
+                        Expanded(
+                          child: _DecisionBadge(
+                            label: _decisionLabel(_decision),
+                            color: decisionColor,
+                            icon: _decision == 'bought'
+                                ? LucideIcons.x
+                                : LucideIcons.check,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            LucideIcons.pencil,
+                            size: 16,
+                            color: ext.mutedForeground,
+                          ),
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            setState(() => _isEditing = true);
+                          },
+                        ),
+                      ],
+                    ),
+            ),
           ),
         ],
       ),
@@ -438,6 +569,7 @@ class _DecisionToggle extends StatelessWidget {
   final VoidCallback onBuy;
 
   const _DecisionToggle({
+    super.key,
     required this.decision,
     required this.skipColor,
     required this.buyColor,
@@ -458,7 +590,10 @@ class _DecisionToggle extends StatelessWidget {
       return Expanded(
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
-          onTap: onTap,
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOut,
@@ -514,6 +649,47 @@ class _DecisionToggle extends StatelessWidget {
             onTap: onBuy,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DecisionBadge extends StatelessWidget {
+  final String label;
+  final Color color;
+  final IconData icon;
+
+  const _DecisionBadge({
+    required this.label,
+    required this.color,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.16),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 13, color: color),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
